@@ -7,7 +7,6 @@
  */
 
 import React, {Component} from 'react';
-import PropTypes from 'prop-types';
 import {
     StyleSheet,
     View,
@@ -17,10 +16,9 @@ import {
     ViewPropTypes as RNViewPropTypes,
 } from 'react-native'
 
+import PropTypes from 'prop-types';
 const ViewPropTypes = RNViewPropTypes || View.propTypes;
- 
-export const DURATION = {
-    LENGTH_LONG: 2000,
+export const DURATION = { 
     LENGTH_SHORT: 500,
     FOREVER: 0,
 };
@@ -31,7 +29,6 @@ export default class Toast extends Component {
 
     constructor(props) {
         super(props);
-
         this.state = {
             isShow: false,
             text: '',
@@ -39,21 +36,22 @@ export default class Toast extends Component {
         }
     }
 
-    show(text, duration) {
+    show(text, duration, callback) {
         this.duration = typeof duration === 'number' ? duration : DURATION.LENGTH_SHORT;
-
+        this.callback = callback;
         this.setState({
             isShow: true,
             text: text,
         });
 
-        Animated.timing(
+        this.animation = Animated.timing(
             this.state.opacityValue,
             {
                 toValue: this.props.opacity,
                 duration: this.props.fadeInDuration,
             }
-        ).start(() => {
+        )
+        this.animation.start(() => {
             this.isShow = true;
             if(duration !== DURATION.FOREVER) this.close();
         });
@@ -67,22 +65,27 @@ export default class Toast extends Component {
         if (!this.isShow && !this.state.isShow) return;
         this.timer && clearTimeout(this.timer);
         this.timer = setTimeout(() => {
-            Animated.timing(
+            this.animation = Animated.timing(
                 this.state.opacityValue,
                 {
                     toValue: 0.0,
                     duration: this.props.fadeOutDuration,
                 }
-            ).start(() => {
+            )
+            this.animation.start(() => {
                 this.setState({
                     isShow: false,
                 });
                 this.isShow = false;
+                if(typeof this.callback === 'function') {
+                    this.callback();
+                }
             });
         }, delay);
     }
 
     componentWillUnmount() {
+        this.animation && this.animation.stop()
         this.timer && clearTimeout(this.timer);
     }
 
@@ -108,7 +111,7 @@ export default class Toast extends Component {
                 <Animated.View
                     style={[styles.content, { opacity: this.state.opacityValue }, this.props.style]}
                 >
-                    <Text style={this.props.textStyle}>{this.state.text}</Text>
+                    {React.isValidElement(this.state.text) ? this.state.text : <Text style={this.props.textStyle}>{this.state.text}</Text>}
                 </Animated.View>
             </View> : null;
         return view;
